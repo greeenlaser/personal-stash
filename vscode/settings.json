@@ -43,7 +43,11 @@
         "--cross-file-rename",
         "--limit-results=500",
         "--compile-commands-dir=build/release-windows",
-        "--compile-commands-dir=build/debug-windows"
+        "--compile-commands-dir=build/debug-windows",
+        "--header-insertion=never"
     ],
-    "C_Cpp.intelliSenseEngine": "disabled"
+
+    "C_Cpp.intelliSenseEngine": "disabled",
+    //same as clangd header-insertion=never but for microsoft c/cpp
+    //"C_Cpp.autocompleteAddIncludes": false
 }
