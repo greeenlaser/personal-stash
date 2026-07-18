@@ -1,0 +1,49 @@
+//
+// user settings for vscode
+//
+
+{
+    "workbench.startupEditor": "none",
+    "workbench.editor.revealIfOpen": true,
+    "workbench.editor.wrapTabs": true,
+    "workbench.editor.limit.enabled": false,
+    "workbench.editor.labelFormat": "short",
+    "workbench.browser.showInTitleBar": false,
+    "workbench.editor.splitInGroupLayout": "vertical",
+    "workbench.settings.applyToAllProfiles": [],
+
+    "chat.disableAIFeatures": true,
+    "chat.titleBar.openInAgentsWindow.enabled": false,
+    "chat.titleBar.signIn.enabled": false,
+
+    "editor.mouseWheelZoom": true,
+    "editor.gotoLocation.multipleDefinitions": "peek",
+    "editor.minimap.size": "fill",
+    "editor.lightbulb.enabled": "on",
+
+    "explorer.confirmDelete": false,
+    "explorer.confirmDragAndDrop": false,
+
+    "terminal.integrated.mouseWheelZoom": true,
+    "terminal.integrated.profiles.linux": {
+        "fish": {
+            "path": "/usr/bin/fish",
+            "icon": "terminal"
+        }
+    },
+    "terminal.integrated.defaultProfile.linux": "fish",
+
+    "git.openRepositoryInParentFolders": "never",
+    "telemetry.telemetryLevel": "off",
+
+    "clangd.arguments": [
+        "--background-index",
+        "--pch-storage=memory",
+        "--all-scopes-completion",
+        "--cross-file-rename",
+        "--limit-results=500",
+        "--compile-commands-dir=build/release-windows",
+        "--compile-commands-dir=build/debug-windows"
+    ],
+    "C_Cpp.intelliSenseEngine": "disabled"
+}

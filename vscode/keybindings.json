@@ -1,0 +1,16 @@
+//
+// keyboard shortcuts for vscode
+//
+
+[
+    {
+        //save all open files
+        "key": "ctrl+shift+s",
+        "command": "workbench.action.files.saveAll"
+    },
+    {
+        //list all builds to select which build to run
+        "key": "f5",
+        "command": "workbench.action.debug.selectandstart"
+    }
+]
