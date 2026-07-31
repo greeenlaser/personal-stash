@@ -24,6 +24,7 @@
     "explorer.confirmDelete": false,
     "explorer.confirmDragAndDrop": false,
 
+    "terminal.integrated.scrollback": 10000,
     "terminal.integrated.mouseWheelZoom": true,
     "terminal.integrated.profiles.linux": {
         "fish": {
