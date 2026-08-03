@@ -1,0 +1,211 @@
+#!/bin/sh
+
+#
+# mf - simplified move/copy/rename with safe defaults
+#
+# Usage: mf --f PATH [--t PATH ...] [--m] [--o] [--d]
+# Flags can be in any order, --t can be repeated for multiple targets
+#
+
+#
+# Flags:
+#
+#   --f           origin path where file or directory is taken from
+#   --t           target output directory or full file path, renames if current dir and target dir are same
+#   --m           move instead of copy, applies to all targets
+#   --o           overwrite target, applies to all targets
+#   --d           dry run, show what would happen without executing
+#   --h|--help|-h prints all flags and their info
+#
+
+# Default to copy mode, overridden by --m
+move_mode=0
+# Default to no overwrite, overridden by --o
+overwrite=0
+# Default to no dry-run, overridden by --d
+dry_run=0
+# Source path
+from_path=""
+# Newline-separated list of targets
+target_list=""
+# Literal new line
+nl='
+'
+
+#
+# Parse help first (matches dlm pattern)
+#
+
+for arg in "$@"; do
+    case "$arg" in
+        -h|--help|--h)
+            echo "Usage: mf --f PATH [--t PATH ...] [--m] [--o] [--d]"
+            echo "Flags can be in any order, --t can be repeated for multiple targets"
+            echo "  --f  origin path where file or directory is taken from"
+            echo "  --t  target output directory or full file path, renames if current dir and target dir are same"
+            echo "  --m  move instead of copy, applies to all targets"
+            echo "  --o  overwrite target, applies to all targets"
+            echo "  --d  dry run, show what would happen without executing"
+            exit 0 ;;
+    esac
+done
+
+#
+# Parse other args
+#
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --f)
+            if [ -n "$from_path" ]; then
+                echo "mf: [ERROR] --f given more than once, type mf --h for info" >&2
+                exit 1
+            fi
+            if [ "$#" -lt 2 ]; then
+                echo "mf: [ERROR] --f requires a path argument, type mf --h for info" >&2
+                exit 1
+            fi
+            from_path="$2"; shift 2 ;;
+        --t)
+            if [ "$#" -lt 2 ]; then
+                echo "mf: [ERROR] --t requires a path argument, type mf --h for info" >&2
+                exit 1
+            fi
+            target_list="${target_list}${nl}$2"; shift 2 ;;
+        --m)
+            move_mode=1; shift ;;
+        --o)
+            overwrite=1; shift ;;
+        --d)
+            dry_run=1; shift ;;
+        --*|-*)
+            echo "mf: [ERROR] unknown flag: $1, type mf --h for info" >&2
+            exit 1 ;;
+        *)
+            echo "mf: [ERROR] unexpected positional argument: $1, type mf --h for info" >&2
+            exit 1 ;;
+    esac
+done
+
+#
+# Strip leading newline from target list
+#
+
+target_list="${target_list#"$nl"}"
+
+#
+# Validate required arguments
+#
+
+if [ -z "$from_path" ]; then
+    echo "mf: [ERROR] --f is required, type mf --h for info" >&2
+    exit 1
+fi
+
+if [ -z "$target_list" ]; then
+    echo "mf: [ERROR] at least one --t is required, type mf --h for info" >&2
+    exit 1
+fi
+
+if [ ! -e "$from_path" ]; then
+    echo "mf: [ERROR] source does not exist: $from_path" >&2
+    exit 1
+fi
+
+#
+# Resolve rename vs copy/move into directory
+# Single --t that is not an existing directory → rename
+# Otherwise → treat as destination directory
+#
+
+target_count=0
+for t in $target_list; do
+    [ -n "$t" ] && target_count=$((target_count + 1))
+done
+
+rename_mode=0
+if [ "$target_count" -eq 1 ] && [ ! -d "${target_list}" ]; then
+    rename_mode=1
+fi
+
+#
+# Check for conflicts BEFORE any filesystem operation (all-or-nothing safety)
+#
+
+conflicts=""
+OLD_IFS="$IFS"; IFS="$nl"
+for target in $target_list; do
+    [ -z "$target" ] && continue
+    check_path="$target"
+    # If not rename mode and target is a directory, check inside it
+    if [ "$rename_mode" -eq 0 ] && [ -d "$target" ]; then
+        base=$(basename "$from_path")
+        check_path="${target%/}/$base"
+    fi
+    if [ -e "$check_path" ] && [ "$overwrite" -eq 0 ]; then
+        conflicts="${conflicts}${nl}  $check_path"
+    fi
+done
+IFS="$OLD_IFS"
+
+if [ -n "$conflicts" ]; then
+    echo "mf: [ERROR] target(s) already exist (use --o to overwrite):${conflicts}" >&2
+    exit 2
+fi
+
+#
+# Dry run: print planned actions and exit
+#
+
+if [ "$dry_run" -eq 1 ]; then
+    action="cp"
+    [ "$move_mode" -eq 1 ] && action="mv"
+    OLD_IFS="$IFS"; IFS="$nl"
+    for target in $target_list; do
+        [ -z "$target" ] && continue
+        if [ "$rename_mode" -eq 1 ]; then
+            echo "mf: [DRY-RUN] $action '$from_path' -> '$target'"
+        else
+            dest="$target"
+            [ -d "$target" ] && dest="${target%/}/$(basename "$from_path")"
+            echo "mf: [DRY-RUN] $action '$from_path' -> '$dest'"
+        fi
+    done
+    IFS="$OLD_IFS"
+    exit 0
+fi
+
+#
+# Execute moves atomically where possible
+#
+
+OLD_IFS="$IFS"; IFS="$nl"
+for target in $target_list; do
+    [ -z "$target" ] && continue
+    if [ "$rename_mode" -eq 1 ]; then
+        dest="$target"
+    else
+        dest="$target"
+        [ -d "$target" ] && dest="${target%/}/$(basename "$from_path")"
+    fi
+
+    if [ "$move_mode" -eq 1 ]; then
+        if [ "$overwrite" -eq 1 ] && [ -e "$dest" ]; then
+            mv -f "$from_path" "$dest" || { echo "mf: [ERROR] failed to move: $from_path -> $dest" >&2; exit 3; }
+        else
+            mv "$from_path" "$dest" || { echo "mf: [ERROR] failed to move: $from_path -> $dest" >&2; exit 3; }
+        fi
+    else
+        if [ "$overwrite" -eq 1 ] && [ -e "$dest" ]; then
+            tmp="${dest}.tmp.$$"
+            cp -a "$from_path" "$tmp" || { echo "mf: [ERROR] failed to copy to temp: $tmp" >&2; rm -f "$tmp"; exit 3; }
+            mv -f "$tmp" "$dest" || { echo "mf: [ERROR] failed atomic rename: $dest" >&2; rm -f "$tmp"; exit 3; }
+        else
+            cp -a "$from_path" "$dest" || { echo "mf: [ERROR] failed to copy: $from_path -> $dest" >&2; exit 3; }
+        fi
+    fi
+    echo "mf: $from_path -> $dest" >&2
+done
+IFS="$OLD_IFS"
+
+exit 0
