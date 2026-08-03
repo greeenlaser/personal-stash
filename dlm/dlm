@@ -1,0 +1,253 @@
+#!/bin/sh
+
+#
+# dlm - download audio (opus) or video (mkv) with yt-dlp
+#
+# Usage: dlm [--q/--d] [--b BROWSER] [--t] [--m] [--v] [--o DIR] [URL ...]
+# Flags and URLs can be in any order, supports multiple URLs
+#
+
+#
+# Flags:
+#
+#   --q           yt-dlp errors only, cannot be used together with --d
+#   --d           debug/verbose yt-dlp output, cannot be used together with --q
+#   --b           which browser to get cookies from, if not used then no cookies are used
+#   --t           embed thumbnail (audio only, ignored if using --v)
+#   --m           embed metadata
+#   --v           download best video + audio as mkv (otherwise audio-only as opus)
+#   --o           output directory, it must exist
+#   --h|--help|-h prints all flags and their info
+#
+
+# Default to non-quiet and non-verbose, overridden by --q/--d
+verbosity=""
+# Default to no browser, overridden by --b
+browser=""
+# Default to no thumbnail unless overridden by --t
+embed_thumb=""
+# Default to no metadata unless overridden by --m
+embed_meta=""
+# Default to audio mode unless overridden by --v
+mode="audio"
+# Default to no output directory unless overridden by --o
+out_dir=""
+# List of all URLs
+url_list=""
+# Literal new line
+nl='
+'
+
+#
+# Verify yt-dlp existence
+#
+
+if ! command -v yt-dlp >/dev/null 2>&1; then
+    echo "dlm: [ERROR] yt-dlp is not installed or not on PATH" >&2
+    exit 1
+fi
+
+#
+# Check for update
+#
+
+(
+    if command -v pacman >/dev/null 2>&1; then
+        installed=$(yt-dlp --version 2>/dev/null)
+        latest=$(pacman -Si yt-dlp 2>/dev/null | sed -n 's/^Version *: *//p')
+        hint="sudo pacman -Syu yt-dlp"
+    elif command -v apt-get >/dev/null 2>&1; then
+        installed=$(apt-cache policy yt-dlp 2>/dev/null \
+                    | sed -n 's/^ *Installed: *//p')
+        latest=$(apt-cache policy yt-dlp 2>/dev/null \
+                 | sed -n 's/^ *Candidate: *//p')
+        hint="sudo apt-get install --only-upgrade yt-dlp"
+    fi
+
+    # Nothing to compare (unknown pkg manager / yt-dlp not packaged here).
+    if [ -z "$installed" ] || [ -z "$latest" ] || [ "$latest" = "(none)" ]; then
+        echo "dlm: [WARN] yt-dlp update check skipped (no pacman/apt info)" >&2
+    elif [ "$installed" = "$latest" ]; then
+        echo "dlm: [INFO] yt-dlp $installed is up to date" >&2
+    else
+        echo "dlm: [INFO] yt-dlp $installed -> $latest available (update: $hint)" >&2
+    fi
+) 2>/dev/null &
+
+#
+# Parse help
+#
+
+for arg in "$@"; do
+    case "$arg" in
+        -h|--help|--h)
+            echo "Usage: dlm [--q/--d] [--b BROWSER] [--t] [--m] [--v] [--o DIR] [URL ...]"
+            echo "Flags and urls can be in any order, supports multiple URLs"
+            echo "  --q  yt-dlp errors only, cannot be used together with --d"
+            echo "  --d  debug/verbose yt-dlp output, cannot be used together with --q"
+            echo "  --b  which browser to get cookies from, if not used then no cookies are used"
+            echo "  --t  embed thumbnail (audio only, ignored if using --v)"
+            echo "  --m  embed metadata"
+            echo "  --v  download best video + audio as mkv (otherwise audio-only as opus)"
+            echo "  --o  output directory, it must exist"
+            exit 0 ;;
+    esac
+done
+
+#
+# Parse other args
+#
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --d)
+            [ -n "$verbosity" ] && { echo "dlm: [ERROR] --d/--q given more than once or conflicting, type dlm --h for info" >&2; exit 1; }
+            verbosity="--verbose"; shift ;;
+        --q)
+            [ -n "$verbosity" ] && { echo "dlm: [ERROR] --d/--q given more than once or conflicting, type dlm --h for info" >&2; exit 1; }
+            verbosity="--quiet"; shift ;;
+        --b)
+            if [ -n "$browser" ]; then
+                echo "dlm: [ERROR] --b given more than once, type dlm --h for info" >&2
+                exit 1
+            fi
+            if [ "$#" -lt 2 ]; then
+                echo "dlm: [ERROR] --b requires a browser name, type dlm --h for info" >&2
+                exit 1
+            fi
+            browser="$2"; shift 2 ;;
+        --t)
+            [ -n "$embed_thumb" ] && { echo "dlm: [ERROR] --t given more than once, type dlm --h for info" >&2; exit 1; }
+            embed_thumb="--embed-thumbnail"; shift ;;
+        --m)
+            [ -n "$embed_meta" ] && { echo "dlm: [ERROR] --m given more than once, type dlm --h for info" >&2; exit 1; }
+            embed_meta="--embed-metadata";   shift ;;
+        --v)
+            [ "$mode" = "video" ] && { echo "dlm: [ERROR] --v given more than once, type dlm --h for info" >&2; exit 1; }
+            mode="video";                    shift ;;
+        --o)
+            if [ -n "$out_dir" ]; then
+                echo "dlm: [ERROR] --o given more than once, type dlm --h for info" >&2
+                exit 1
+            fi
+            if [ "$#" -lt 2 ]; then
+                echo "dlm: [ERROR] --o requires a directory argument, type dlm --h for info" >&2
+                exit 1
+            fi
+            out_dir="$2"
+            # If the next word is also an existing dir, the unquoted glob
+            # matched multiple dirs - reject it (we only support one).
+            if [ "$#" -ge 3 ] && [ -d "$3" ]; then
+                echo "dlm: [ERROR] --o glob matched multiple directories, specify exactly one, type dlm --h for info" >&2
+                exit 1
+            fi
+            shift 2 ;;
+        --*|-*)
+            echo "dlm: [ERROR] unknown flag: $1, type dlm --h for info" >&2
+            exit 1 ;;
+        *)               url_list="${url_list}${nl}$1";   shift ;;
+    esac
+done
+
+#
+# Strip first appended leading newline
+#
+
+url_list="${url_list#"$nl"}"
+
+#
+# Bail out if no URLs were found
+#
+
+if [ -z "$url_list" ]; then
+    echo "dlm: [ERROR] no URLs were passed, type dlm --h for info" >&2
+    exit 1
+fi
+
+#
+# Validate output
+#
+
+if [ -n "$out_dir" ]; then
+    if [ ! -e "$out_dir" ]; then
+        echo "dlm: [ERROR] --o path does not exist: $out_dir, type dlm --h for info" >&2
+        exit 1
+    fi
+    if [ ! -d "$out_dir" ]; then
+        echo "dlm: [ERROR] --o path is not a directory: $out_dir, type dlm --h for info" >&2
+        exit 1
+    fi
+    # Build "DIR/Uploader - Title.ext". Trailing-slash safe.
+    out_template="${out_dir%/}/%(uploader)s - %(title)s.%(ext)s"
+else
+    out_template="%(uploader)s - %(title)s.%(ext)s"
+fi
+
+#
+# Build the yt-dlp option list
+#
+
+if [ -n "$browser" ]; then
+    set -- --cookies-from-browser "$browser" \
+           -o "$out_template" \
+           $embed_meta $verbosity
+else
+    set -- -o "$out_template" \
+           $embed_meta $verbosity
+fi
+
+#
+# Pick the format pipeline based on mode
+#
+
+if [ "$mode" = "video" ]; then
+    set -- "$@" -f "bestvideo+bestaudio/best" --merge-output-format mkv
+    if [ -n "$embed_thumb" ]; then
+        echo "dlm: [INFO] --t ignored (no thumbnail needed for video)" >&2
+    fi
+else
+    set -- "$@" -f bestaudio -x --audio-format opus --audio-quality 0 $embed_thumb
+fi
+
+#
+# Append the URLs as separate arguments
+#
+
+OLD_IFS="$IFS"; IFS="$nl"
+for url in $url_list; do
+    [ -n "$url" ] && set -- "$@" "$url"
+done
+IFS="$OLD_IFS"
+
+#
+# Count how many URLs we collected by re-walking the newline-separated list
+#
+
+url_count=0
+for url in $url_list; do
+    [ -n "$url" ] && url_count=$((url_count + 1))
+done
+
+#
+# Build a human-readable flag list from whichever options got set
+#
+
+flags="mode=$mode"
+[ "$verbosity" = "--verbose" ] && flags="$flags, debug"
+[ "$verbosity" = "--quiet"   ] && flags="$flags, quiet"
+[ -n "$browser"     ] && flags="$flags, browser=$browser"
+[ "$mode" = "audio" ] && [ -n "$embed_thumb" ] && flags="$flags, thumbnail"
+[ -n "$embed_meta"  ] && flags="$flags, metadata"
+[ -n "$out_dir"     ] && flags="$flags, out=$out_dir"
+
+echo "dlm: [INFO] $flags | $url_count URL(s)" >&2
+
+#
+# Run yt-dlp
+#
+
+exec yt-dlp "$@"
+
+rc=$?
+echo "dlm: [ERROR] failed to launch yt-dlp (exit $rc), type dlm --h for info" >&2
+exit 1

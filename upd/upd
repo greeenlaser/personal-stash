@@ -1,0 +1,28 @@
+#!/bin/bash
+
+#catch errors
+set -euo pipefail
+
+echo "### Updating CachyOS..."
+echo
+
+#update pacman and yay, default response to questions
+yay -Syu --noconfirm
+
+#update flatpak apps
+flatpak update
+
+echo
+echo "### Updating GPU drivers..."
+echo
+
+sudo chwd --autoconfigure
+
+echo
+echo "### Removing unused packages"
+echo
+
+yay -Sc --noconfirm
+
+echo
+echo "### All updates complete!"
