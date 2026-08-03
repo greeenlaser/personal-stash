@@ -197,9 +197,16 @@ for target in $target_list; do
         fi
     else
         if [ "$overwrite" -eq 1 ] && [ -e "$dest" ]; then
-            tmp="${dest}.tmp.$$"
-            cp -a "$from_path" "$tmp" || { echo "mf: [ERROR] failed to copy to temp: $tmp" >&2; rm -f "$tmp"; exit 3; }
-            mv -f "$tmp" "$dest" || { echo "mf: [ERROR] failed atomic rename: $dest" >&2; rm -f "$tmp"; exit 3; }
+            # If target is a directory, we must remove it first to replace it
+            if [ -d "$dest" ]; then
+                rm -rf "$dest" || { echo "mf: [ERROR] failed to remove existing target: $dest" >&2; exit 3; }
+                cp -a "$from_path" "$dest" || { echo "mf: [ERROR] failed to copy: $from_path -> $dest" >&2; exit 3; }
+            else
+                # Target is a file, use atomic rename
+                tmp="${dest}.tmp.$$"
+                cp -a "$from_path" "$tmp" || { echo "mf: [ERROR] failed to copy to temp: $tmp" >&2; rm -f "$tmp"; exit 3; }
+                mv -f "$tmp" "$dest" || { echo "mf: [ERROR] failed atomic rename: $dest" >&2; rm -f "$tmp"; exit 3; }
+            fi
         else
             cp -a "$from_path" "$dest" || { echo "mf: [ERROR] failed to copy: $from_path -> $dest" >&2; exit 3; }
         fi
