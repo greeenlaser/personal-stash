@@ -12,5 +12,10 @@
         //list all builds to select which build to run
         "key": "f5",
         "command": "workbench.action.debug.selectandstart"
+    },
+    {
+        //build a profile
+        "key": "ctrl+shift+b",
+        "command": "workbench.action.tasks.build"
     }
 ]
