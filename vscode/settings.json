@@ -31,6 +31,9 @@
         "Command Prompt": {
             "path": "C:\\Windows\\System32\\cmd.exe"
         },
+        "PWSH": {
+            "path": "C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.5.0_x64__8wekyb3d8bbwe\\pwsh.exe"
+        },
         "PowerShell": {
             "path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
         },
@@ -38,7 +41,7 @@
             "path": "C:\\Program Files\\Git\\bin\\bash.exe"
         }
     },
-    "terminal.integrated.defaultProfile.windows": "Git Bash",
+    "terminal.integrated.defaultProfile.windows": "PWSH",
     "terminal.integrated.profiles.linux": {
         "fish": {
             "path": "/usr/bin/fish",
