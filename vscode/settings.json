@@ -29,16 +29,16 @@
 
     "terminal.integrated.profiles.windows": {
         "Command Prompt": {
-            "path": "C:\Windows\System32\cmd.exe"
+            "path": "C:\\Windows\\System32\\cmd.exe"
         },
         "PowerShell": {
-            "path": "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+            "path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
         },
         "Git Bash": {
-            "path": "C:\Program Files\Git\bin\bash.exe"
+            "path": "C:\\Program Files\\Git\\bin\\bash.exe"
         }
     },
-    "terminal.integrated.defaultProfile.windows": "Command Prompt",
+    "terminal.integrated.defaultProfile.windows": "Git Bash",
     "terminal.integrated.profiles.linux": {
         "fish": {
             "path": "/usr/bin/fish",
