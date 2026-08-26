@@ -1,0 +1,24 @@
+#!/bin/sh
+
+# vv (verifyversions) recursively scans the current directory for object files,
+# static libraries, shared libraries and executables and reports
+# every undefined symbol tagged with a GLIBC version, along with the
+# file it was found in. Useful for finding the true minimum
+# GLIBC version required by a file.
+
+set -u
+
+{
+    # .o and .a files: use nm to check both version tags and
+    # problematic symbol names (pre-link objects may lack version annotations).
+    find . -type f \( -name '*.o' -o -name '*.a' \) 2>/dev/null | while read -r f; do
+        nm "$f" 2>/dev/null | { grep -E 'GLIBC_|__isoc23_' || true; } | awk -v file="$f" '{print file" | "$NF" | "$(NF-1)}'
+    done
+
+    # executables and .so files: use objdump -T for the dynamic symbol table.
+    # -perm /111 matches any execute bit set (POSIX), catching binaries
+    # regardless of whether the user, group, or other execute bit is set.
+    find . -type f \( -name '*.so*' -o -perm /111 \) 2>/dev/null | while read -r f; do
+        objdump -T "$f" 2>/dev/null | { grep '\*UND\*' || true; } | awk -v file="$f" '{for(i=1;i<=NF;i++) if ($i ~ /^\(GLIBC_/) print file" | "$NF" | "$i}'
+    done
+} | sort -u | column -t -s '|'
