@@ -10,3 +10,6 @@ paccache -r -k N
 
 #rename a file or folder
 rename 'before' 'after' *
+
+#make a file line endings linux-appropriate
+sed -i 's/\r$//' filename

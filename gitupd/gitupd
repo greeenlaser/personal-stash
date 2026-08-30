@@ -1,0 +1,169 @@
+#!/bin/bash
+
+set -o pipefail
+
+# Maximum directory depth to search for git repositories
+MAX_DEPTH=5
+
+VERBOSE=false
+
+if [ "$1" = "--v" ]; then
+    VERBOSE=true
+fi
+
+indent()
+{
+    sed 's/^/    /'
+}
+
+log()
+{
+    echo "    $1"
+}
+
+verbose_log()
+{
+    if [ "$VERBOSE" = true ]; then
+        log "$1"
+    fi
+}
+
+update_repo()
+{
+    local current_branch
+    current_branch=$(git branch --show-current)
+
+    local stashed=false
+    local branch
+    local active_branch
+
+    # Preserve current working state
+    if [ -n "$(git status --porcelain)" ]; then
+        verbose_log "Stashing uncommitted changes..."
+
+        if git stash push -u -m "gitupd temporary stash" 2>&1 | indent; then
+            stashed=true
+        else
+            log "Failed to stash uncommitted changes!"
+            return 1
+        fi
+    fi
+
+    # Fetch all remote branch information
+    if ! git fetch 2>&1 | indent; then
+        log "Failed to fetch repository!"
+
+        if [ "$stashed" = true ]; then
+            verbose_log "Restoring stashed changes..."
+            git stash pop 2>&1 | indent
+        fi
+
+        return 1
+    fi
+
+    # Update every existing local branch
+    for branch in $(git branch --format='%(refname:short)'); do
+        echo "--- branch: $branch ---"
+
+        active_branch=$(git branch --show-current)
+
+        if [ "$branch" != "$active_branch" ]; then
+            if ! git switch "$branch" 2>&1 | indent; then
+                continue
+            fi
+        fi
+
+        git pull --ff-only 2>&1 | indent
+    done
+
+    # Return to the branch we started on
+    active_branch=$(git branch --show-current)
+
+    if [ -n "$current_branch" ] &&
+       [ "$active_branch" != "$current_branch" ]; then
+        git switch "$current_branch" 2>&1 | indent
+    fi
+
+    # Restore original working state
+    if [ "$stashed" = true ]; then
+        verbose_log "Restoring stashed changes..."
+        git stash pop 2>&1 | indent
+    fi
+}
+
+search_dir()
+{
+    local dir="$1"
+    local depth="$2"
+    local display_name="$3"
+
+    (
+        cd "$dir" || exit
+
+        local is_git=false
+        local found_subdir=false
+        local subdir
+        local subname
+
+        # Check whether this exact directory owns a git repository
+        if [ -d ".git" ] || [ -f ".git" ]; then
+            is_git=true
+        fi
+
+        # Verbose mode prints every scanned path.
+        # Normal mode only prints paths containing a git repository.
+        if [ "$VERBOSE" = true ] || [ "$is_git" = true ]; then
+            echo "=== $display_name [depth $depth] ==="
+        fi
+
+        if [ "$is_git" = true ]; then
+            verbose_log "Git repository found."
+            update_repo
+        else
+            verbose_log "'$display_name' did not contain a git repository."
+        fi
+
+        # Stop at maximum depth
+        if [ "$depth" -ge "$MAX_DEPTH" ]; then
+            if [ "$is_git" = false ]; then
+                verbose_log "Maximum depth $MAX_DEPTH reached at '$display_name', no git repository at this location."
+            fi
+
+            exit
+        fi
+
+        # Check whether there are subdirectories to search
+        for subdir in */; do
+            [ -d "$subdir" ] || continue
+            found_subdir=true
+            break
+        done
+
+        # Continue searching until maximum depth
+        if [ "$found_subdir" = true ]; then
+            verbose_log "Searching deeper from '$display_name'..."
+
+            for subdir in */; do
+                [ -d "$subdir" ] || continue
+
+                subname=$(basename "$subdir")
+
+                search_dir \
+                    "$subdir" \
+                    $((depth + 1)) \
+                    "$display_name/$subname"
+            done
+        fi
+    )
+}
+
+for dir in */; do
+    [ -d "$dir" ] || continue
+
+    name=$(basename "$dir")
+
+    search_dir \
+        "$dir" \
+        1 \
+        "$name"
+done
