@@ -13,12 +13,12 @@ fi
 
 indent()
 {
-    sed 's/^/    /'
+    sed 's/^/\t\t/'
 }
 
 log()
 {
-    echo "    $1"
+    printf '\t\t%s\n' "$1"
 }
 
 verbose_log()
@@ -63,7 +63,7 @@ update_repo()
 
     # Update every existing local branch
     for branch in $(git branch --format='%(refname:short)'); do
-        echo "--- branch: $branch ---"
+        printf '\t--- branch: %s ---\n' "$branch"
 
         active_branch=$(git branch --show-current)
 
@@ -157,13 +157,5 @@ search_dir()
     )
 }
 
-for dir in */; do
-    [ -d "$dir" ] || continue
-
-    name=$(basename "$dir")
-
-    search_dir \
-        "$dir" \
-        1 \
-        "$name"
-done
+# Start searching from the directory gitupd was invoked from
+search_dir "." 0 "$(basename "$PWD")"
