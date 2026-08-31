@@ -56,8 +56,6 @@
         "--all-scopes-completion",
         "--cross-file-rename",
         "--limit-results=500",
-        "--compile-commands-dir=build/release-windows",
-        "--compile-commands-dir=build/debug-windows",
         "--header-insertion=never"
     ],
 
