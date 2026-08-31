@@ -32,13 +32,10 @@
             "path": "C:\\Windows\\System32\\cmd.exe"
         },
         "PWSH": {
-            "path": "C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.5.0_x64__8wekyb3d8bbwe\\pwsh.exe"
+            "path": "C:\\Program Files\\PowerShell\\7\\pwsh.exe"
         },
         "PowerShell": {
             "path": "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"
-        },
-        "Git Bash": {
-            "path": "C:\\Program Files\\Git\\bin\\bash.exe"
         }
     },
     "terminal.integrated.defaultProfile.windows": "PWSH",
