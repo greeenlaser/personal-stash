@@ -11,6 +11,7 @@ FILE=ecosystem.md
 # Libraries
 T_KW=../../cpp/kalawindow/docs/${FILE}
 T_KS=../../cpp/kalaserver/docs/${FILE}
+T_KD=../../cpp/kaladatabase/docs/${FILE}
 T_KP=../../cpp/kalaphysics/docs/${FILE}
 T_KL=../../cpp/kalalua/docs/${FILE}
 T_KG=../../cpp/kalagraphics/docs/${FILE}
@@ -29,6 +30,7 @@ T_MM=../../cpp/_games/metal-metropolis/docs/${FILE}
 mf --o --f ${FILE} \
     \
     --t ${T_KW} \
+    --t ${T_KD} \
     --t ${T_KS} \
     --t ${T_KP} \
     --t ${T_KL} \
