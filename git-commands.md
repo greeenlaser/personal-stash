@@ -1,7 +1,7 @@
 # General
 
 ## clone a repo
-git clone git@github.com:greeenlaser/cgltf.git
+git clone git@github.com:USERNAME/REPOSITORY_NAME.git
 
 ## get remote changes
 git fetch && git pull
