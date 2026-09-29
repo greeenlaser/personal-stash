@@ -23,6 +23,9 @@ git tag
 ## create branch from tag
 git switch -c NEW_BRANCH_NAME TAG_NAME
 
+## push new branch and set local branch to track it
+git push -u origin BRANCH_NAME
+
 # Setting up SSH
 
 ## Linux
