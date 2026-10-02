@@ -10,19 +10,20 @@ echo
 yay -Syu --noconfirm
 
 #update flatpak apps
-flatpak update
+flatpak update -y
 
 echo
 echo "### Updating GPU drivers..."
 echo
 
-sudo chwd --autoconfigure
+sudo chwd --autoconfigure || true
 
 echo
 echo "### Removing unused packages"
 echo
 
-yay -Sc --noconfirm
+sudo paccache -rk3
+yay -Sc --aur --noconfirm
 
 echo
 echo "### All updates complete!"

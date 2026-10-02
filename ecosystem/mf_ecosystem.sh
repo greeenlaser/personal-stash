@@ -8,6 +8,8 @@ set -e
 
 FILE=ecosystem.md
 
+T_KH=../../cpp/kalaheaders/docs/${FILE}
+
 # Libraries
 T_KW=../../cpp/kalawindow/docs/${FILE}
 T_KS=../../cpp/kalaserver/docs/${FILE}
@@ -28,6 +30,8 @@ T_EE=../../cpp/elypso-engine/docs/${FILE}
 T_MM=../../cpp/_games/metal-metropolis/docs/${FILE}
 
 mf --o --f ${FILE} \
+    \
+    --t ${T_KH} \
     \
     --t ${T_KW} \
     --t ${T_KD} \
