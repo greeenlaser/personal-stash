@@ -28,6 +28,7 @@ T_EE=../../cpp/elypso-engine/docs/${FILE}
 
 # Games
 T_MM=../../cpp/_games/metal-metropolis/docs/${FILE}
+T_SF=../../cpp/_games/scrolls-of-fate/docs/${FILE}
 
 mf --o --f ${FILE} \
     \
@@ -47,4 +48,5 @@ mf --o --f ${FILE} \
     --t ${T_EH} \
     --t ${T_EE} \
     \
-    --t ${T_MM}
+    --t ${T_MM} \
+    --t ${T_SF}
